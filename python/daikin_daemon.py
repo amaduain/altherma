@@ -10,6 +10,7 @@ from influxdb import InfluxDBClient
 ##GLOBAL VARIABLES####
 
 daikin_db_name = "daikin"
+power_db_name = "power"
 
 log_level = logging.DEBUG
 interval = 10 #Seconds
@@ -54,6 +55,25 @@ def on_message(client, userdata, msg):
     m_in.pop("M5BatPwr")
     m_in.pop("WifiRSSI")
     logger.debug(m_in)
+    #Formatting ints to floats:
+    m_in["Outdoor air temp.(R1T)"] = float(m_in["Outdoor air temp.(R1T)"])
+    m_in["INV primary current (A)"] = float(m_in["INV primary current (A)"])
+    m_in["INV secondary current (A)"] = float(m_in["INV secondary current (A)"])
+    m_in["Leaving water temp. before BUH (R1T)"] = float(m_in["Leaving water temp. before BUH (R1T)"])
+    m_in["Leaving water temp. after BUH (R2T)"] = float(m_in["Leaving water temp. after BUH (R2T)"])
+    m_in["Refrig. Temp. liquid side (R3T)"] = float(m_in["Refrig. Temp. liquid side (R3T)"])
+    m_in["Inlet water temp.(R4T)"] = float(m_in["Inlet water temp.(R4T)"])
+    m_in["DHW tank temp. (R5T)"] = float(m_in["DHW tank temp. (R5T)"])
+    m_in["Indoor ambient temp. (R1T)"] = float(m_in["Indoor ambient temp. (R1T)"])
+    m_in["Flow sensor (l/min)"] = float(m_in["Flow sensor (l/min)"])
+    #Get the last reading on voltage for the power calculation
+    query = 'SELECT last("voltage") FROM "ev_power"'
+    results = power_db_client.query(query)
+    voltage = 230.0
+    for result in results:
+        voltage = float(result[0]["last"])
+    m_in["INV Power"] = m_in["INV primary current (A)"] * voltage
+    m_in["Voltage"] = float(voltage)
     timestamp = datetime.utcnow().replace(tzinfo=pytz.utc)
     json_body = [
                                     {
@@ -66,7 +86,7 @@ def on_message(client, userdata, msg):
                                     }
                                 ]
     daikin_db_client.write_points(json_body)
-    
+
 def create_db(db_name):
     client = InfluxDBClient(host='localhost', port=8086)
     db_list = client.get_list_database()
@@ -83,6 +103,8 @@ if __name__ == '__main__':
         logger.info("Initializing Influx DB")
         create_db(daikin_db_name)
         daikin_db_client = InfluxDBClient(host='localhost', port=8086,database=daikin_db_name)
+        # Needed for lack of voltage input :-(
+        power_db_client = InfluxDBClient(host='localhost', port=8086,database=power_db_name)
         logger.info("Initializing Mosquitto client.")
         client = mqtt.Client()
         client.on_connect = on_connect
