@@ -34,5 +34,5 @@ def create_logger(log_file_name, log_level):
 
 
 if __name__ == '__main__':
-    logger, log_handler = create_logger("./log/daiking.log",log_level)
+    logger, log_handler = create_logger("./logs/daiking.log",log_level)
     logger.info("Starting daiking measurements...")
