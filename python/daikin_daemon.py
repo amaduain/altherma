@@ -1,15 +1,17 @@
 import time
+import json
+import paho.mqtt.client as mqtt
+import pytz
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import date, datetime
-
-import paho.mqtt.client as mqtt
+from influxdb import InfluxDBClient
 
 ##GLOBAL VARIABLES####
 
 daikin_db_name = "daikin"
 
-log_level = logging.INFO
+log_level = logging.DEBUG
 interval = 10 #Seconds
 daikin_topic = "espaltherma/ATTR"
 mqtt_server = "192.168.2.2"
@@ -42,12 +44,45 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(daikin_topic)
 
 def on_message(client, userdata, msg):
-    logger.info(msg.topic+" "+str(msg.payload))
+    logger.debug(msg.topic+" "+str(msg.payload))
+    m_decode=str(msg.payload.decode("utf-8","ignore"))
+    m_in=json.loads(m_decode) #decode json data
+    m_in.pop("M5VIN")
+    m_in.pop("M5AmpIn")
+    m_in.pop("M5BatV")
+    m_in.pop("M5BatCur")
+    m_in.pop("M5BatPwr")
+    m_in.pop("WifiRSSI")
+    logger.debug(m_in)
+    timestamp = datetime.utcnow().replace(tzinfo=pytz.utc)
+    json_body = [
+                                    {
+                                        "measurement": "daikin",
+                                        "tags": {
+                                            "user": "Alex"
+                                        },
+                                        "time": timestamp.isoformat(),
+                                        "fields": m_in
+                                    }
+                                ]
+    daikin_db_client.write_points(json_body)
+    
+def create_db(db_name):
+    client = InfluxDBClient(host='localhost', port=8086)
+    db_list = client.get_list_database()
+    for db in db_list:
+        if db['name'] == db_name:
+            logger.debug(f"Database {db_name} already exists, skipping creation")
+            return
+    client.create_database(db_name)
 
 if __name__ == '__main__':
     logger, log_handler = create_logger("./logs/daiking.log",log_level)
     logger.info("Starting daiking measurements...")
     try:
+        logger.info("Initializing Influx DB")
+        create_db(daikin_db_name)
+        daikin_db_client = InfluxDBClient(host='localhost', port=8086,database=daikin_db_name)
         logger.info("Initializing Mosquitto client.")
         client = mqtt.Client()
         client.on_connect = on_connect
