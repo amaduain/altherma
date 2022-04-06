@@ -56,13 +56,13 @@ LabelDef PROGMEM labelDefs[] = {
 //{0x20,8,105,2,1,"Heat exchanger mid-temp."},
 //{0x20,10,105,2,1,"Liquid pipe temp.(R6T)"},
 //{0x20,12,105,2,1,"Heat sink temp."},
-{0x20,14,105,2,2,"Pressure"},
-{0x20,14,405,2,1,"Pressure(T)"},
+//{0x20,14,105,2,2,"Pressure"}, Tested and not working
+//{0x20,14,405,2,1,"Pressure(T)"}, Tested and not working
 //{0x20,16,105,2,-1,"Not in use"},
 //{0x20,18,105,2,-1,"Not in use"},
 {0x21,0,105,2,-1,"INV primary current (A)"},
 {0x21,2,105,2,-1,"INV secondary current (A)"},
-{0x21,2,101,2,-1,"Voltage (N-phase) (V)"},
+//{0x21,2,101,2,-1,"Voltage (N-phase) (V)"}, BOTH Tested and not working
 //{0x21,4,101,2,-1,"Voltage (N-phase) (V)"},
 //{0x21,6,307,1,-1,"Brine Flow Switch"},
 //{0x21,6,306,1,-1,"Not in use"},
@@ -198,7 +198,7 @@ LabelDef PROGMEM labelDefs[] = {
 //{0x64,2,303,1,-1,"Boiler Operation Demand"},
 //{0x64,2,302,1,-1,"Boiler DHW Demand"},
 //{0x64,2,301,1,-1,"Bypass Valve Output"},
-{0x64,3,105,2,-1,"BE_COP"},
+//{0x64,3,105,2,-1,"BE_COP"}, Tested and 0 value reported
 //{0x64,5,105,2,1,"Hybrid Heating Target Temp."},
 //{0x64,7,105,2,1,"Boiler Heating Target Temp."},
 //{0x64,9,301,1,-1,"Add pump"},
