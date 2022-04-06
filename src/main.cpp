@@ -17,6 +17,9 @@
 #include "comm.h"
 #include "mqtt.h"
 
+//Added code
+#include <NTPClient.h>
+
 Converter converter;
 char registryIDs[32]; //Holds the registries to query
 bool busy = false;
@@ -155,6 +158,10 @@ void setupScreen(){
 #endif
 }
 
+//Function to sync the time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
 void setup()
 {
   Serial.begin(115200);
@@ -201,6 +208,15 @@ void setup()
 
   initRegistries();
   mqttSerial.print("ESPAltherma started!");
+  mqttSerial.print("Configuring NTP....");
+  timeClient.begin();
+  timeClient.forceUpdate();
+  mqttSerial.print("Waiting to start measuring at the beggining of the minute\n");
+  int seconds_wait = 0;
+  seconds_wait =  60 - timeClient.getSeconds();
+  mqttSerial.printf("Will wait %d sec...\n", seconds_wait);
+  sleep(seconds_wait);
+
 }
 
 void waitLoop(uint ms){
@@ -213,11 +229,15 @@ void waitLoop(uint ms){
 
 void loop()
 {
+  unsigned long sample_time = 0;
+  sample_time = timeClient.getEpochTime();
   if (!client.connected())
   { //(re)connect to MQTT if needed
     reconnect();
   }
   //Querying all registries
+  mqttSerial.printf("Sample time: %lu", sample_time);
+  mqttSerial.print("Time :" + timeClient.getFormattedTime());
   for (size_t i = 0; (i < 32) && registryIDs[i] != 0xFF; i++)
   {
     char buff[64] = {0};
