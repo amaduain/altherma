@@ -98,6 +98,8 @@ void setup_wifi()
   delay(10);
   // We start by connecting to a WiFi network
   mqttSerial.printf("Connecting to %s\n", WIFI_SSID);
+  String hostname = "ESP32_daikin";
+  WiFi.setHostname(hostname.c_str()); //define hostname
   WiFi.begin(WIFI_SSID, WIFI_PWD);
   int i = 0;
   while (WiFi.status() != WL_CONNECTED)

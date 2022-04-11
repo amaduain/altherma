@@ -1,3 +1,4 @@
+from decimal import DivisionByZero
 import time
 import json
 import paho.mqtt.client as mqtt
@@ -48,24 +49,24 @@ def on_message(client, userdata, msg):
     logger.debug(msg.topic+" "+str(msg.payload))
     m_decode=str(msg.payload.decode("utf-8","ignore"))
     m_in=json.loads(m_decode) #decode json data
-    m_in.pop("M5VIN")
+    """m_in.pop("M5VIN")
     m_in.pop("M5AmpIn")
     m_in.pop("M5BatV")
     m_in.pop("M5BatCur")
-    m_in.pop("M5BatPwr")
+    m_in.pop("M5BatPwr")"""
     m_in.pop("WifiRSSI")
     logger.debug(m_in)
     #Formatting ints to floats:
     m_in["Outdoor air temp.(R1T)"] = float(m_in["Outdoor air temp.(R1T)"])
     m_in["INV primary current (A)"] = float(m_in["INV primary current (A)"])
-    m_in["INV secondary current (A)"] = float(m_in["INV secondary current (A)"])
+    #m_in["INV secondary current (A)"] = float(m_in["INV secondary current (A)"])
     m_in["Leaving water temp. before BUH (R1T)"] = float(m_in["Leaving water temp. before BUH (R1T)"])
     m_in["Leaving water temp. after BUH (R2T)"] = float(m_in["Leaving water temp. after BUH (R2T)"])
     m_in["Refrig. Temp. liquid side (R3T)"] = float(m_in["Refrig. Temp. liquid side (R3T)"])
     m_in["Inlet water temp.(R4T)"] = float(m_in["Inlet water temp.(R4T)"])
     m_in["DHW tank temp. (R5T)"] = float(m_in["DHW tank temp. (R5T)"])
-    m_in["Indoor ambient temp. (R1T)"] = float(m_in["Indoor ambient temp. (R1T)"])
     m_in["Flow sensor (l/min)"] = float(m_in["Flow sensor (l/min)"])
+    m_in["Mixed water temp.(R7T)"] = float(m_in["Mixed water temp.(R7T)"])
     #Get the last reading on voltage for the power calculation
     query = 'SELECT last("voltage") FROM "ev_power"'
     results = power_db_client.query(query)
@@ -74,6 +75,12 @@ def on_message(client, userdata, msg):
         voltage = float(result[0]["last"])
     m_in["INV Power"] = m_in["INV primary current (A)"] * voltage
     m_in["Voltage"] = float(voltage)
+    #Calculating COP:
+    if m_in["Freeze Protection"] == "OFF" and m_in["Operation Mode"] == "Heating" and m_in["INV primary current (A)"] > 0.0:
+        dividend = m_in["Flow sensor (l/min)"] * 0.06 * 1.16 * (m_in["Leaving water temp. before BUH (R1T)"] - m_in["Leaving water temp. after BUH (R2T)"])
+        divisor = m_in["INV Power"] / 1000 #KWatts
+        cop = abs(round(dividend / divisor ,2))
+        m_in["COP"] = cop
     timestamp = datetime.utcnow().replace(tzinfo=pytz.utc)
     json_body = [
                                     {
@@ -110,9 +117,18 @@ if __name__ == '__main__':
         client.on_connect = on_connect
         client.on_message = on_message
         logger.info("Starting Mosquitto client.")
-        client.connect(mqtt_server, 1883, 60)
-        logger.info("Client connected, starting loop")
-        client.loop_forever()
+        while True:
+            try:
+                client.connect(mqtt_server, 1883, 60)
+                logger.info("Client connected, starting loop")
+                client.loop_forever()
+            except:
+                logger.error("Generic exception, will wait 30 seconds to try again")
+                time.sleep(10)
+                pass
+                
     except KeyboardInterrupt:
         logger.info("Daiking daemon finished via keyboard interrupt.")
+ 
+    
     
